@@ -1,0 +1,35 @@
+[
+  {
+    "stageId": "client-submit",
+    "status": "running",
+    "at": "2026-07-01T10:00:00.000Z",
+    "summary": "User submitted a concept.",
+    "meta": {
+      "concept": "RAG"
+    }
+  },
+  {
+    "stageId": "server-received",
+    "status": "running",
+    "at": "2026-07-01T10:00:00.180Z",
+    "summary": "Server accepted the request.",
+    "meta": {
+      "transport": "SSE"
+    }
+  },
+  {
+    "stageId": "instant-start",
+    "status": "running",
+    "at": "2026-07-01T10:00:00.420Z",
+    "summary": "First explanation generation started."
+  },
+  {
+    "stageId": "instant-start",
+    "status": "success",
+    "at": "2026-07-01T10:00:03.100Z",
+    "summary": "First readable explanation arrived.",
+    "meta": {
+      "fields": 4
+    }
+  }
+]
