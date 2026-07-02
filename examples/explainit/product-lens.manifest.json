@@ -1,120 +1,201 @@
 {
+  "schemaVersion": "product-lens.v2",
   "product": "ExplainIt",
-  "workflow": "Concept explanation request",
   "audience": "Hackathon viewers, non-technical users, and makers learning how AI products work",
-  "stages": [
+  "workflows": [
     {
-      "id": "client-submit",
-      "label": "User submits concept",
-      "owner": "Frontend",
-      "whatHappens": "The browser captures the concept and starts a traceable explanation run.",
-      "input": "Concept label only",
-      "output": "Local trace start and request intent",
-      "risk": "Empty input or repeated submission"
+      "id": "classic-explain",
+      "label": "Classic concept explanation",
+      "description": "Shows how a single concept explanation request moves through the legacy ExplainIt flow.",
+      "entrypoints": [
+        "Classic explain form",
+        "POST /api/explain-stream"
+      ],
+      "stages": [
+        {
+          "id": "client-submit",
+          "label": "User submits concept",
+          "owner": "Frontend",
+          "whatHappens": "The browser captures the concept and starts a traceable explanation run.",
+          "input": "Concept label only",
+          "output": "Local trace start and request intent",
+          "risk": "Empty input or repeated submission"
+        },
+        {
+          "id": "request-sent",
+          "label": "Streaming request opens",
+          "owner": "Browser",
+          "whatHappens": "The client opens an SSE request to the explanation endpoint.",
+          "input": "Redacted concept and locale",
+          "output": "Open event stream",
+          "risk": "Network failure"
+        },
+        {
+          "id": "server-received",
+          "label": "Server accepts request",
+          "owner": "Backend",
+          "whatHappens": "The server validates the request and prepares staged generation.",
+          "input": "Safe request metadata",
+          "output": "Accepted workflow run",
+          "risk": "Validation or provider configuration error"
+        },
+        {
+          "id": "instant-start",
+          "label": "First explanation starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model starts generating the first readable explanation.",
+          "input": "Redacted concept category",
+          "output": "First-paint generation in progress",
+          "risk": "Provider latency"
+        },
+        {
+          "id": "quick-start",
+          "label": "Learning layer starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model generates story, steps, and challenge data.",
+          "input": "Redacted concept category",
+          "output": "Learning layer in progress",
+          "risk": "Slow or partial structured output"
+        },
+        {
+          "id": "visual-start",
+          "label": "Visual layer starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model generates structured visual breakdown data.",
+          "input": "Redacted concept category",
+          "output": "Visual structure in progress",
+          "risk": "Visual layer degradation"
+        },
+        {
+          "id": "complete",
+          "label": "Result merged and saved",
+          "owner": "Frontend",
+          "whatHappens": "The client merges staged outputs, stores local history, and enables sharing.",
+          "input": "Structured explanation summaries",
+          "output": "Usable ExplainIt result",
+          "risk": "Partial save or degraded visual layer"
+        }
+      ],
+      "events": [
+        {
+          "name": "classic-explain.submitted",
+          "stageId": "client-submit",
+          "status": "running",
+          "safeSummary": "Concept submitted."
+        },
+        {
+          "name": "classic-explain.request-sent",
+          "stageId": "request-sent",
+          "status": "running",
+          "safeSummary": "Streaming request opened."
+        },
+        {
+          "name": "classic-explain.server-received",
+          "stageId": "server-received",
+          "status": "running",
+          "safeSummary": "Server accepted the request."
+        },
+        {
+          "name": "classic-explain.complete",
+          "stageId": "complete",
+          "status": "success",
+          "safeSummary": "The final result was merged and saved locally."
+        }
+      ]
     },
     {
-      "id": "request-sent",
-      "label": "Streaming request opens",
-      "owner": "Browser",
-      "whatHappens": "The client opens an SSE request to the explanation endpoint.",
-      "input": "Redacted concept and locale",
-      "output": "Open event stream",
-      "risk": "Network failure"
-    },
-    {
-      "id": "server-received",
-      "label": "Server accepts request",
-      "owner": "Backend",
-      "whatHappens": "The server validates the request and prepares staged generation.",
-      "input": "Safe request metadata",
-      "output": "Accepted workflow run",
-      "risk": "Validation or provider configuration error"
-    },
-    {
-      "id": "instant-start",
-      "label": "First explanation starts",
-      "owner": "AI Adapter",
-      "whatHappens": "The model starts generating the first readable explanation.",
-      "input": "Redacted concept category",
-      "output": "First-paint generation in progress",
-      "risk": "Provider latency"
-    },
-    {
-      "id": "quick-start",
-      "label": "Learning layer starts",
-      "owner": "AI Adapter",
-      "whatHappens": "The model generates story, steps, and challenge data.",
-      "input": "Redacted concept category",
-      "output": "Learning layer in progress",
-      "risk": "Slow or partial structured output"
-    },
-    {
-      "id": "visual-start",
-      "label": "Visual layer starts",
-      "owner": "AI Adapter",
-      "whatHappens": "The model generates structured visual breakdown data.",
-      "input": "Redacted concept category",
-      "output": "Visual structure in progress",
-      "risk": "Visual layer degradation"
-    },
-    {
-      "id": "complete",
-      "label": "Result merged and saved",
-      "owner": "Frontend",
-      "whatHappens": "The client merges staged outputs, stores local history, and enables sharing.",
-      "input": "Structured explanation summaries",
-      "output": "Usable ExplainIt result",
-      "risk": "Partial save or degraded visual layer"
-    }
-  ],
-  "events": [
-    {
-      "name": "client-submit",
-      "stageId": "client-submit",
-      "status": "running",
-      "safeSummary": "Concept submitted."
-    },
-    {
-      "name": "request-sent",
-      "stageId": "request-sent",
-      "status": "running",
-      "safeSummary": "Streaming request opened."
-    },
-    {
-      "name": "received",
-      "stageId": "server-received",
-      "status": "running",
-      "safeSummary": "Server accepted the request."
-    },
-    {
-      "name": "instant-start",
-      "stageId": "instant-start",
-      "status": "running",
-      "safeSummary": "First explanation generation started."
-    },
-    {
-      "name": "quick-start",
-      "stageId": "quick-start",
-      "status": "running",
-      "safeSummary": "Learning layer generation started."
-    },
-    {
-      "name": "visual-start",
-      "stageId": "visual-start",
-      "status": "running",
-      "safeSummary": "Visual layer generation started."
-    },
-    {
-      "name": "complete",
-      "stageId": "complete",
-      "status": "success",
-      "safeSummary": "The final result was merged and saved locally."
+      "id": "concept-studio",
+      "label": "Concept studio pack",
+      "description": "Shows how a concept is turned into a structured learning and expression package.",
+      "entrypoints": [
+        "Studio concept form",
+        "POST /api/studio-stream"
+      ],
+      "stages": [
+        {
+          "id": "client-submit",
+          "label": "User starts studio run",
+          "owner": "Frontend",
+          "whatHappens": "The browser captures the concept, audience, and output intent.",
+          "input": "Concept label, audience label, and safe mode options",
+          "output": "Studio run id",
+          "risk": "Vague concept or missing audience"
+        },
+        {
+          "id": "positioning-start",
+          "label": "Positioning layer starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model extracts the concept's essence, value, and target user.",
+          "input": "Redacted concept and audience",
+          "output": "Positioning summary",
+          "risk": "Too generic or mismatched audience framing"
+        },
+        {
+          "id": "modeling-start",
+          "label": "Mental model layer starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model creates a structured mechanism, analogy, and step breakdown.",
+          "input": "Concept positioning summary",
+          "output": "Mechanism and structure",
+          "risk": "Oversimplified model or missing boundary"
+        },
+        {
+          "id": "expression-start",
+          "label": "Expression layer starts",
+          "owner": "AI Adapter",
+          "whatHappens": "The model creates scripts and shareable explanations for different contexts.",
+          "input": "Validated learning structure",
+          "output": "Script, customer explanation, and community post",
+          "risk": "Tone mismatch or weak practical example"
+        },
+        {
+          "id": "studio-complete",
+          "label": "Studio pack completes",
+          "owner": "Frontend",
+          "whatHappens": "The UI merges the studio pack, stores it, and makes each output reusable.",
+          "input": "Structured studio sections",
+          "output": "Reusable knowledge work package",
+          "risk": "Partial save or missing section"
+        }
+      ],
+      "events": [
+        {
+          "name": "concept-studio.submitted",
+          "stageId": "client-submit",
+          "status": "running",
+          "safeSummary": "Studio run started."
+        },
+        {
+          "name": "concept-studio.positioning-start",
+          "stageId": "positioning-start",
+          "status": "running",
+          "safeSummary": "Positioning layer started."
+        },
+        {
+          "name": "concept-studio.modeling-start",
+          "stageId": "modeling-start",
+          "status": "running",
+          "safeSummary": "Mental model layer started."
+        },
+        {
+          "name": "concept-studio.expression-start",
+          "stageId": "expression-start",
+          "status": "running",
+          "safeSummary": "Expression layer started."
+        },
+        {
+          "name": "concept-studio.complete",
+          "stageId": "studio-complete",
+          "status": "success",
+          "safeSummary": "The studio pack was merged and saved locally."
+        }
+      ]
     }
   ],
   "redactionRules": [
     "Do not show API keys or provider credentials.",
     "Do not show raw model prompts or complete model responses.",
     "Do not show full request bodies.",
-    "Show only concept labels, stage names, counts, durations, and safe summaries."
+    "Show only workflow ids, run ids, concept labels, stage names, counts, durations, and safe summaries."
   ]
 }

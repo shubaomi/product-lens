@@ -1,5 +1,5 @@
 interface:
   display_name: "Product Lens"
-  short_description: "Create standalone live workflow explainers for products"
+  short_description: "Create language-agnostic live explainers for product workflows"
   brand_color: "#3F65A8"
-  default_prompt: "Use $product-lens to add a standalone live workflow Lens for this product feature without changing the core business flow."
+  default_prompt: "Use $product-lens to add a standalone live Lens for this product's core workflows without changing the core business flows, matching the host stack and UI."

@@ -10,9 +10,65 @@ from pathlib import Path
 
 
 API_PATTERNS = [
-    ("route", re.compile(r"app\.(get|post|put|patch|delete)\([`'\"]([^`'\"]+)")),
-    ("route", re.compile(r"router\.(get|post|put|patch|delete)\([`'\"]([^`'\"]+)")),
-    ("fetch", re.compile(r"fetch\([`'\"]([^`'\"]+)")),
+    {
+        "kind": "route",
+        "language": "javascript",
+        "pattern": re.compile(r"app\.(get|post|put|patch|delete)\([`'\"]([^`'\"]+)"),
+        "method_group": 1,
+        "path_group": 2,
+    },
+    {
+        "kind": "route",
+        "language": "javascript",
+        "pattern": re.compile(r"router\.(get|post|put|patch|delete)\([`'\"]([^`'\"]+)"),
+        "method_group": 1,
+        "path_group": 2,
+    },
+    {
+        "kind": "fetch",
+        "language": "javascript",
+        "pattern": re.compile(r"fetch\([`'\"]([^`'\"]+)"),
+        "method": "fetch",
+        "path_group": 1,
+    },
+    {
+        "kind": "route",
+        "language": "python",
+        "pattern": re.compile(r"@\w+\.(get|post|put|patch|delete)\([\"']([^\"']+)"),
+        "method_group": 1,
+        "path_group": 2,
+    },
+    {
+        "kind": "route",
+        "language": "python",
+        "pattern": re.compile(r"@\w+\.route\([\"']([^\"']+)"),
+        "method": "route",
+        "path_group": 1,
+    },
+    {
+        "kind": "route",
+        "language": "python",
+        "pattern": re.compile(r"\b(?:path|re_path)\([\"']([^\"']+)"),
+        "method": "django-path",
+        "path_group": 1,
+    },
+    {
+        "kind": "route",
+        "language": "java",
+        "pattern": re.compile(
+            r"@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping|RequestMapping)"
+            r"\((?:value\s*=\s*)?[\"']([^\"']+)"
+        ),
+        "method_group": 1,
+        "path_group": 2,
+    },
+    {
+        "kind": "route",
+        "language": "java",
+        "pattern": re.compile(r"@Path\([\"']([^\"']+)"),
+        "method": "jax-rs-path",
+        "path_group": 1,
+    },
 ]
 
 EVENT_PATTERNS = [
@@ -22,6 +78,10 @@ EVENT_PATTERNS = [
     "WebSocket",
     "ReadableStream",
     "getReader",
+    "StreamingResponse",
+    "SseEmitter",
+    "ServerSentEvent",
+    "Flux<",
 ]
 
 
@@ -33,15 +93,85 @@ def read_text(path: Path) -> str:
 
 
 def detect_framework(root: Path) -> list[str]:
+    frameworks: list[str] = []
+
     package = root / "package.json"
-    if not package.exists():
-        return []
-    data = read_text(package)
-    frameworks = []
+    data = read_text(package) if package.exists() else ""
     for name in ["react", "vite", "next", "express", "vue", "svelte", "fastify"]:
-        if f'"{name}"' in data:
+        if f'"{name}"' in data and name not in frameworks:
             frameworks.append(name)
+
+    python_text = "\n".join(
+        read_text(root / filename)
+        for filename in ["pyproject.toml", "requirements.txt", "Pipfile"]
+        if (root / filename).exists()
+    )
+    for marker, label in [
+        ("fastapi", "fastapi"),
+        ("flask", "flask"),
+        ("django", "django"),
+        ("celery", "celery"),
+    ]:
+        if marker in python_text.lower() and label not in frameworks:
+            frameworks.append(label)
+
+    java_text = "\n".join(
+        read_text(root / filename)
+        for filename in ["pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle"]
+        if (root / filename).exists()
+    )
+    java_markers = {
+        "spring-boot": "spring-boot",
+        "spring-web": "spring-web",
+        "spring-webflux": "spring-webflux",
+        "quarkus": "quarkus",
+        "micronaut": "micronaut",
+    }
+    for marker, label in java_markers.items():
+        if marker in java_text.lower() and label not in frameworks:
+            frameworks.append(label)
+
     return frameworks
+
+
+def detect_ui_stack(root: Path) -> list[str]:
+    ui_stack: list[str] = []
+    package = root / "package.json"
+    package_text = read_text(package) if package.exists() else ""
+
+    package_markers = {
+        "tailwindcss": "tailwind",
+        "@mui/material": "mui",
+        "antd": "antd",
+        "@chakra-ui/react": "chakra-ui",
+        "@mantine/core": "mantine",
+        "lucide-react": "lucide-react",
+        "class-variance-authority": "class-variance-authority",
+        "styled-components": "styled-components",
+        "@emotion/react": "emotion",
+    }
+    for marker, label in package_markers.items():
+        if f'"{marker}"' in package_text and label not in ui_stack:
+            ui_stack.append(label)
+
+    config_markers = [
+        ("tailwind.config.js", "tailwind-config"),
+        ("tailwind.config.ts", "tailwind-config"),
+        ("components.json", "shadcn-ui"),
+    ]
+    for filename, label in config_markers:
+        if (root / filename).exists() and label not in ui_stack:
+            ui_stack.append(label)
+
+    for component_dir in [
+        root / "components" / "ui",
+        root / "src" / "components" / "ui",
+        root / "app" / "components" / "ui",
+    ]:
+        if component_dir.exists() and "component-library-folder" not in ui_stack:
+            ui_stack.append("component-library-folder")
+
+    return ui_stack
 
 
 def scan_files(root: Path) -> dict:
@@ -49,13 +179,26 @@ def scan_files(root: Path) -> dict:
     endpoints = []
     streaming_files = []
 
+    ignored_dirs = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build", "target", ".gradle"}
+    supported_suffixes = {".ts", ".tsx", ".js", ".jsx", ".py", ".java"}
+
     for path in root.rglob("*"):
-        if path.is_dir() or any(part in {"node_modules", ".git", "dist", "build"} for part in path.parts):
+        if path.is_dir() or any(part in ignored_dirs for part in path.parts):
             continue
         if "skills" in path.parts and "product-lens" in path.parts:
             continue
-        if path.suffix.lower() not in {".ts", ".tsx", ".js", ".jsx", ".py"}:
+        if path.suffix.lower() not in supported_suffixes:
             continue
+
+        suffix = path.suffix.lower()
+        if suffix in {".ts", ".tsx", ".js", ".jsx"}:
+            file_language = "javascript"
+        elif suffix == ".py":
+            file_language = "python"
+        elif suffix == ".java":
+            file_language = "java"
+        else:
+            file_language = "unknown"
 
         rel = str(path.relative_to(root))
         text = read_text(path)
@@ -63,11 +206,34 @@ def scan_files(root: Path) -> dict:
             continue
 
         score = 0
-        if any(token in text for token in ["fetch(", "app.post", "router.post", "EventSource", "getReader"]):
+        route_tokens = [
+            "fetch(",
+            "app.post",
+            "router.post",
+            "@app.",
+            "@router.",
+            "@GetMapping",
+            "@PostMapping",
+            "@RequestMapping",
+            "@Path(",
+        ]
+        if any(token in text for token in route_tokens):
             score += 2
-        if any(token in text for token in ["openai", "anthropic", "llm", "model", "stream", "SSE"]):
+        ai_or_stream_tokens = [
+            "openai",
+            "anthropic",
+            "llm",
+            "model",
+            "stream",
+            "SSE",
+            "StreamingResponse",
+            "SseEmitter",
+            "ServerSentEvent",
+        ]
+        if any(token in text for token in ai_or_stream_tokens):
             score += 2
-        if any(token in text for token in ["onComplete", "onError", "onStatus", "callback"]):
+        lifecycle_tokens = ["onComplete", "onError", "onStatus", "callback", "try:", "catch", "@ExceptionHandler"]
+        if any(token in text for token in lifecycle_tokens):
             score += 1
         if score:
             candidates.append({"file": rel, "score": score})
@@ -75,12 +241,22 @@ def scan_files(root: Path) -> dict:
         if any(token in text for token in EVENT_PATTERNS):
             streaming_files.append(rel)
 
-        for pattern_type, pattern in API_PATTERNS:
-            for match in pattern.finditer(text):
-                if pattern_type == "fetch":
-                    endpoints.append({"file": rel, "method_or_call": "fetch", "path": match.group(1)})
-                else:
-                    endpoints.append({"file": rel, "method_or_call": match.group(1), "path": match.group(2)})
+        for pattern_info in API_PATTERNS:
+            if pattern_info["language"] != file_language:
+                continue
+            for match in pattern_info["pattern"].finditer(text):
+                method = pattern_info.get("method")
+                if pattern_info.get("method_group"):
+                    method = match.group(pattern_info["method_group"])
+                path_value = match.group(pattern_info["path_group"])
+                endpoints.append(
+                    {
+                        "file": rel,
+                        "language": pattern_info["language"],
+                        "method_or_call": method,
+                        "path": path_value,
+                    }
+                )
 
     candidates.sort(key=lambda item: item["score"], reverse=True)
     return {
@@ -92,6 +268,8 @@ def scan_files(root: Path) -> dict:
 
 def build_recommendations(scan: dict) -> list[str]:
     recommendations = []
+    recommendations.append("Adapt Lens UI to the host product's existing layout, controls, typography, and tokens.")
+    recommendations.append("Add a Product Lens feature flag and default it off for production.")
     if scan["streamingFiles"]:
         recommendations.append("Use Pattern A: map existing stream/SSE events to Lens stages.")
     if scan["endpoints"]:
@@ -114,6 +292,7 @@ def main() -> int:
     result = {
         "root": str(root),
         "frameworks": detect_framework(root),
+        "uiStack": detect_ui_stack(root),
         **scan,
         "recommendations": build_recommendations(scan),
     }
@@ -123,12 +302,14 @@ def main() -> int:
     else:
         print(f"Product Lens scan: {root}")
         print(f"Frameworks: {', '.join(result['frameworks']) or 'unknown'}")
+        print(f"UI stack: {', '.join(result['uiStack']) or 'unknown'}")
         print("\nCandidate files:")
         for item in result["candidateFiles"]:
             print(f"- {item['file']} (score {item['score']})")
         print("\nEndpoints/calls:")
         for item in result["endpoints"][:10]:
-            print(f"- {item['method_or_call']} {item['path']} in {item['file']}")
+            language = item.get("language", "unknown")
+            print(f"- {item['method_or_call']} {item['path']} ({language}) in {item['file']}")
         print("\nRecommendations:")
         for item in result["recommendations"]:
             print(f"- {item}")

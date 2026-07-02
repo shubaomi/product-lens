@@ -1,75 +1,161 @@
 {
+  "schemaVersion": "product-lens.v2",
   "product": "Example Product",
-  "workflow": "Explain one user-facing request from submit to result",
   "audience": "Non-technical users, customers, operators, and demo viewers",
-  "stages": [
+  "workflows": [
     {
-      "id": "client-submit",
-      "label": "User submits input",
-      "owner": "Frontend",
-      "whatHappens": "The UI captures the user's intent and creates a traceable run.",
-      "input": "Redacted concept or item label",
-      "output": "Run id and safe request summary",
-      "risk": "Invalid input, empty input, or duplicate request"
+      "id": "primary-request",
+      "label": "Primary request",
+      "description": "Shows how a user request moves from input to a visible product result.",
+      "entrypoints": [
+        "Submit button",
+        "POST /api/request"
+      ],
+      "stages": [
+        {
+          "id": "client-submit",
+          "label": "User submits input",
+          "owner": "Frontend",
+          "whatHappens": "The UI captures the user's intent and creates a traceable run.",
+          "input": "Redacted concept, item, or task label",
+          "output": "Run id and safe request summary",
+          "risk": "Invalid input, empty input, or duplicate request"
+        },
+        {
+          "id": "server-received",
+          "label": "Server receives request",
+          "owner": "Backend",
+          "whatHappens": "The route validates parameters and starts the workflow.",
+          "input": "Safe request metadata",
+          "output": "Accepted workflow run",
+          "risk": "Validation failure or service unavailable"
+        },
+        {
+          "id": "processing",
+          "label": "Core processing",
+          "owner": "Application",
+          "whatHappens": "The product performs the core business or AI operation.",
+          "input": "Redacted task category and safe options",
+          "output": "Structured result summary",
+          "risk": "Timeout, upstream error, or partial response"
+        },
+        {
+          "id": "render-result",
+          "label": "Render result",
+          "owner": "Frontend",
+          "whatHappens": "The UI merges returned data and renders the final result.",
+          "input": "Structured result summary",
+          "output": "Visible product result",
+          "risk": "Partial render or degraded visual layer"
+        }
+      ],
+      "events": [
+        {
+          "name": "primary-request.submitted",
+          "stageId": "client-submit",
+          "status": "running",
+          "safeSummary": "User submitted a request."
+        },
+        {
+          "name": "primary-request.accepted",
+          "stageId": "server-received",
+          "status": "running",
+          "safeSummary": "Server accepted the request."
+        },
+        {
+          "name": "primary-request.processed",
+          "stageId": "processing",
+          "status": "success",
+          "safeSummary": "The core operation returned a structured result."
+        },
+        {
+          "name": "primary-request.rendered",
+          "stageId": "render-result",
+          "status": "success",
+          "safeSummary": "The UI rendered the result."
+        }
+      ]
     },
     {
-      "id": "server-received",
-      "label": "Server receives request",
-      "owner": "Backend",
-      "whatHappens": "The route validates parameters and starts the workflow.",
-      "input": "Safe request metadata",
-      "output": "Accepted workflow run",
-      "risk": "Validation failure or service unavailable"
-    },
-    {
-      "id": "ai-processing",
-      "label": "AI processing",
-      "owner": "AI Provider",
-      "whatHappens": "The model generates a safe structured response.",
-      "input": "Redacted task category and locale",
-      "output": "Structured result summary",
-      "risk": "Timeout, provider error, or partial response"
-    },
-    {
-      "id": "render-result",
-      "label": "Render result",
-      "owner": "Frontend",
-      "whatHappens": "The UI merges returned data and renders the final result.",
-      "input": "Structured result summary",
-      "output": "Visible product result",
-      "risk": "Partial render or degraded visual layer"
-    }
-  ],
-  "events": [
-    {
-      "name": "client-submit",
-      "stageId": "client-submit",
-      "status": "running",
-      "safeSummary": "User submitted a request."
-    },
-    {
-      "name": "server-received",
-      "stageId": "server-received",
-      "status": "running",
-      "safeSummary": "Server accepted the request."
-    },
-    {
-      "name": "ai-processing-complete",
-      "stageId": "ai-processing",
-      "status": "success",
-      "safeSummary": "AI returned a structured result."
-    },
-    {
-      "name": "render-complete",
-      "stageId": "render-result",
-      "status": "success",
-      "safeSummary": "The UI rendered the result."
+      "id": "background-import",
+      "label": "Background import",
+      "description": "Shows how a batch or file import moves through queued processing.",
+      "entrypoints": [
+        "Import button",
+        "POST /api/import",
+        "Queue worker"
+      ],
+      "stages": [
+        {
+          "id": "import-started",
+          "label": "Import starts",
+          "owner": "Frontend",
+          "whatHappens": "The user selects source material and starts an import run.",
+          "input": "Redacted source label and item count",
+          "output": "Import run id",
+          "risk": "Unsupported source or empty file"
+        },
+        {
+          "id": "job-queued",
+          "label": "Job enters queue",
+          "owner": "Backend",
+          "whatHappens": "The backend records the import and schedules background work.",
+          "input": "Safe import metadata",
+          "output": "Queued job reference",
+          "risk": "Queue unavailable or duplicate job"
+        },
+        {
+          "id": "items-processed",
+          "label": "Items are processed",
+          "owner": "Worker",
+          "whatHappens": "The worker parses, validates, and stores importable items.",
+          "input": "Redacted item batch",
+          "output": "Processed item counts",
+          "risk": "Partial import, malformed rows, or upstream timeout"
+        },
+        {
+          "id": "import-complete",
+          "label": "Import completes",
+          "owner": "Application",
+          "whatHappens": "The product makes the imported items available to the user.",
+          "input": "Processed item counts",
+          "output": "Updated product state",
+          "risk": "Partial completion or delayed indexing"
+        }
+      ],
+      "events": [
+        {
+          "name": "background-import.started",
+          "stageId": "import-started",
+          "status": "running",
+          "safeSummary": "Import run started."
+        },
+        {
+          "name": "background-import.queued",
+          "stageId": "job-queued",
+          "status": "running",
+          "safeSummary": "Import job entered the queue."
+        },
+        {
+          "name": "background-import.processed",
+          "stageId": "items-processed",
+          "status": "success",
+          "safeSummary": "Items were processed with safe counts."
+        },
+        {
+          "name": "background-import.completed",
+          "stageId": "import-complete",
+          "status": "success",
+          "safeSummary": "Imported items became available."
+        }
+      ]
     }
   ],
   "redactionRules": [
     "Never show API keys, auth tokens, secrets, or environment values.",
     "Never show raw system prompts or complete model prompts.",
     "Never show full request or response bodies.",
-    "Never show personal data unless the user explicitly provided consent and the product policy allows it."
+    "Never show personal data unless the user explicitly provided consent and the product policy allows it.",
+    "Show only workflow ids, run ids, stage names, counts, durations, provider labels, retry state, cache state, and redacted labels."
   ]
 }

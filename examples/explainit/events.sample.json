@@ -1,5 +1,7 @@
 [
   {
+    "workflowId": "classic-explain",
+    "runId": "run_classic_001",
     "stageId": "client-submit",
     "status": "running",
     "at": "2026-07-01T10:00:00.000Z",
@@ -9,6 +11,8 @@
     }
   },
   {
+    "workflowId": "classic-explain",
+    "runId": "run_classic_001",
     "stageId": "server-received",
     "status": "running",
     "at": "2026-07-01T10:00:00.180Z",
@@ -18,18 +22,53 @@
     }
   },
   {
+    "workflowId": "classic-explain",
+    "runId": "run_classic_001",
     "stageId": "instant-start",
     "status": "running",
     "at": "2026-07-01T10:00:00.420Z",
     "summary": "First explanation generation started."
   },
   {
+    "workflowId": "classic-explain",
+    "runId": "run_classic_001",
     "stageId": "instant-start",
     "status": "success",
     "at": "2026-07-01T10:00:03.100Z",
     "summary": "First readable explanation arrived.",
     "meta": {
       "fields": 4
+    }
+  },
+  {
+    "workflowId": "concept-studio",
+    "runId": "run_studio_001",
+    "stageId": "client-submit",
+    "status": "running",
+    "at": "2026-07-01T10:04:00.000Z",
+    "summary": "Studio run started.",
+    "meta": {
+      "concept": "RAG",
+      "audience": "founders"
+    }
+  },
+  {
+    "workflowId": "concept-studio",
+    "runId": "run_studio_001",
+    "stageId": "positioning-start",
+    "status": "running",
+    "at": "2026-07-01T10:04:00.240Z",
+    "summary": "Positioning layer started."
+  },
+  {
+    "workflowId": "concept-studio",
+    "runId": "run_studio_001",
+    "stageId": "studio-complete",
+    "status": "success",
+    "at": "2026-07-01T10:04:09.300Z",
+    "summary": "The studio pack was merged and saved locally.",
+    "meta": {
+      "sections": 6
     }
   }
 ]
